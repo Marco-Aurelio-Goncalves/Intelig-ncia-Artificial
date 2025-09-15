@@ -1,77 +1,100 @@
-# Rota Inteligente — Otimização de Entregas para "Sabor Express"
+# 🚚 Rota Inteligente: Otimização de Entregas com Algoritmos de IA
 
-## 1. Descrição do problema
-A “Sabor Express” enfrenta rotas manuais ineficientes em horários de pico, gerando atrasos, custos maiores (combustível/tempo) e insatisfação de clientes. O objetivo é sugerir rotas melhores e agrupar entregas próximas para reduzir tempo total e distância percorrida.
+## 1. Descrição do Problema
+A Sabor Express enfrenta atrasos nas entregas devido a rotas ineficientes.  
+Este projeto aplica **algoritmos de grafos (A\*)** e **clustering (K-Means)** para otimizar rotas de entregadores, reduzindo custos e aumentando a satisfação dos clientes.
+
+---
 
 ## 2. Objetivos
-- Modelar a cidade como um grafo (nós = bairros/pontos; arestas = ruas com peso = tempo/distância).
-- Agrupar pedidos próximos (K-Means) para atribuir zonas a entregadores.
-- Encontrar rotas eficientes dentro de cada zona usando algoritmos de busca/heursticas (A*, shortest path + heurística de ordem: nearest neighbor).
-- Avaliar desempenho com métricas: distância total, tempo estimado, tempo de execução e eficiência do agrupamento.
+- Representar a cidade como grafo, com pontos de entrega e restaurante.  
+- Usar **A\*** para encontrar rotas mais curtas.  
+- Usar **K-Means** para agrupar entregas em zonas eficientes.  
+- Avaliar resultados com métricas de distância e inércia do clustering.  
 
-## 3. Abordagem adotada
-### 3.1 Representação do mapa
-- O mapa é representado por um grafo `networkx.Graph()` com coordenadas (x,y) em cada nó.
-- As arestas recebem peso `distância euclidiana` (ou tempo estimado se multiplicado por fator).
+---
 
-### 3.2 Agrupamento de entregas (K-Means)
-- Aplicado sobre coordenadas geográficas dos pedidos.
-- Objetivo: agrupar pedidos próximos para que cada entregador execute uma rota concentrada em uma área.
+## 3. Algoritmos Utilizados
+- **A\*** → busca heurística para encontrar menor caminho entre pontos.  
+- **K-Means** → aprendizado não supervisionado para agrupar entregas.  
 
-### 3.3 Planejamento de rota dentro de cada cluster
-- Para cada cluster:
-  1. Seleciona-se um **depósito** (depot) como origem (ex.: cozinha).
-  2. Calcula-se caminhos mais curtos entre pares de pontos usando `networkx.shortest_path_length` (peso = distância).
-  3. Usa-se uma heurística **Nearest Neighbor (NN)** para ordenar entregas: a cada passo, ir para o ponto mais próximo ainda não visitado (baseado na distância de grafo).
-  4. Para melhorar (e reduzir custo), pode-se aplicar 2-opt local (opcional) para ajustar a ordem (no código há referência/estrutura para 2-opt).
+---
 
-- Também demonstramos A* para encontrar caminho entre pontos (útil se houver heurística espacial).
+## 4. Estrutura do Projeto
+/src
+main.py
+/data
+(opcional: mapas ou pedidos em CSV)
+/outputs
+map_routes.png
+results.json
+requirements.txt
+README.md
 
-### 3.4 Algoritmos implementados/demonstrados
-- **A\*** — busca heurística entre nós (usando distância euclidiana como heurística admissível).
-- **BFS / DFS** — demonstração de travessia do grafo.
-- **K-Means** — agrupar entregas.
-- **Nearest Neighbor + shortest-path** — rota heurística por cluster.
 
-## 4. Diagrama do grafo
-- O diagrama é gerado automaticamente pelo script (`matplotlib` + `networkx`) e salvo em `outputs/graph_map.png`.
-- Visualiza nós (interseções), arestas (ruas), pedidos e rotas planejadas.
+---
 
-## 5. Métricas e análise dos resultados
-- **Distância total percorrida**: soma das distâncias reais do grafo para todas as rotas.
-- **Tempo estimado total**: distância / velocidade média (parâmetro).
-- **Tempo de computação**: tempo gasto para executar clustering + roteamento.
-- **Custo relativo**: custo estimado em combustível (proporcional à distância).
-- **Coesão do cluster**: inércia do K-Means (menor é melhor).
+## 5. Execução
 
-### Interpretação típica dos resultados
-- Redução da distância total comparada ao baseline (ordem aleatória ou manual).
-- Trade-off: melhor clusterização reduz deslocamentos longos, mas aumenta o número de rotas paralelas (mais entregadores).
-
-## 6. Limitações encontradas
-- Dados são sintéticos (para avaliação; para produção, integrar com API de mapas e dados de tráfego).
-- Heurísticas (NN, 2-opt) não garantem solução ótima (problema é equivalente ao VRP/TSP e NP-hard).
-- Não há otimização de capacidade (nº máximo de pedidos por entregador) — possível extensão com MILP ou metaheurísticas.
-
-## 7. Sugestões de melhoria
-- Integrar dados de tráfego em tempo real (reduzir tempo de viagem).
-- Resolver VRP com MILP (OR-Tools) ou metaheurísticas (ga, simulated annealing).
-- Implementar balanceamento por capacidade e janelas de tempo (time windows).
-- Usar APIs reais (OpenStreetMap / OSRM / GraphHopper / Google Maps) para pesos reais.
-
-## 8. Como executar (resumo)
-
-1. Criar ambiente:
-
+### Instalar dependências
+```bash
 pip install -r requirements.txt
 
-2. Rodar:
 
+No Google Colab:
+
+!pip install networkx matplotlib scikit-learn numpy
+
+Rodar
 python src/main.py
 
-3. Os outputs ficam em `outputs/`: mapa, clusters, rotas, métricas.
+6. Outputs
 
-## 9. Referências
-- ORION (UPS) — otimização on-road.
-- Medium: “Optimizing Logistics: Clustering and MILP”.
-- Research: AI-Powered Route Optimization.
+outputs/map_routes.png → grafo da cidade com clusters e rota calculada.
+
+outputs/results.json → resultados numéricos, clusters e custo da rota.
+
+Exemplo de saída em JSON:
+
+{
+  "clusters": {
+    "0": ["ClienteA", "ClienteE"],
+    "1": ["ClienteB", "ClienteC", "ClienteD"]
+  },
+  "inercia_kmeans": 7.92,
+  "rota_exemplo": ["Restaurante", "ClienteB", "ClienteD"],
+  "custo_rota": 8.2
+}
+
+7. Resultados e Discussão
+
+O algoritmo A* encontra caminhos mais curtos que rotas manuais.
+
+O K-Means permite dividir os clientes em zonas, reduzindo tempo médio de entrega.
+
+Limitações: não considera tráfego em tempo real nem múltiplos entregadores simultâneos.
+
+8. Melhorias Futuras
+
+Adicionar dados reais de tráfego.
+
+Implementar algoritmos genéticos ou aprendizado por reforço para otimização dinâmica.
+
+Suporte para múltiplos veículos e entregadores em paralelo.
+
+9. Referências
+
+UPS ORION — sistema de otimização de rotas.
+
+Medium: “Optimizing Logistics: Clustering and MILP”.
+
+ResearchGate: AI-Powered Route Optimization.
+
+
+---
+
+👉 Ou seja:  
+- No `requirements.txt` apenas 4 libs.  
+- No `README.md` o fluxo de execução foi atualizado para refletir o **novo script e os novos outputs (`map_routes.png` e `results.json`)**.  
+
+Quer que eu monte também um **diagrama do grafo (em imagem estática)** já pronto para você incluir no README como exemplo?
