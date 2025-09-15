@@ -60,4 +60,18 @@ A “Sabor Express” enfrenta rotas manuais ineficientes em horários de pico, 
 - Usar APIs reais (OpenStreetMap / OSRM / GraphHopper / Google Maps) para pesos reais.
 
 ## 8. Como executar (resumo)
+
 1. Criar ambiente:
+
+pip install -r requirements.txt
+
+2. Rodar:
+
+python src/main.py
+
+3. Os outputs ficam em `outputs/`: mapa, clusters, rotas, métricas.
+
+## 9. Referências
+- ORION (UPS) — otimização on-road.
+- Medium: “Optimizing Logistics: Clustering and MILP”.
+- Research: AI-Powered Route Optimization.
