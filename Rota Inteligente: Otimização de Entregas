@@ -1,0 +1,198 @@
+# Instalação de Biblioteca 
+
+!pip install networkx matplotlib scikit-learn
+
+# ==============================================
+# Rota Inteligente: Otimização de Entregas
+# main.py
+# ==============================================
+
+
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+from sklearn.cluster import KMeans
+from queue import PriorityQueue
+
+# ----------------------------
+# 1. Criar grafo da cidade
+# ----------------------------
+def criar_grafo():
+    G = nx.Graph()
+
+    # Exemplo de bairros/pontos (poderia vir de CSV)
+    nodes = {
+        "Restaurante": (0, 0),
+        "ClienteA": (2, 4),
+        "ClienteB": (5, 2),
+        "ClienteC": (6, 6),
+        "ClienteD": (8, 3),
+        "ClienteE": (1, 7),
+    }
+
+    # Adiciona nós
+    for n, pos in nodes.items():
+        G.add_node(n, pos=pos)
+
+    # Adiciona arestas (distâncias aproximadas)
+    edges = [
+        ("Restaurante", "ClienteA", 4.5),
+        ("Restaurante", "ClienteB", 5.0),
+        ("ClienteA", "ClienteC", 5.0),
+        ("ClienteB", "ClienteC", 4.0),
+        ("ClienteB", "ClienteD", 3.2),
+        ("ClienteC", "ClienteD", 2.5),
+        ("ClienteA", "ClienteE", 3.0),
+        ("ClienteE", "ClienteC", 4.2),
+    ]
+
+    for u, v, w in edges:
+        G.add_edge(u, v, weight=w)
+
+    return G
+
+
+# ----------------------------
+# 2. Algoritmo A* de busca
+# ----------------------------
+def heuristic(a, b):
+    """Distância euclidiana para A*"""
+    (x1, y1) = a
+    (x2, y2) = b
+    return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+
+def a_star_search(graph, start, goal):
+    pos = nx.get_node_attributes(graph, "pos")
+
+    frontier = PriorityQueue()
+    frontier.put((0, start))
+    came_from = {start: None}
+    cost_so_far = {start: 0}
+
+    while not frontier.empty():
+        _, current = frontier.get()
+
+        if current == goal:
+            break
+
+        for neighbor in graph.neighbors(current):
+            new_cost = cost_so_far[current] + graph[current][neighbor]["weight"]
+            if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
+                cost_so_far[neighbor] = new_cost
+                priority = new_cost + heuristic(pos[neighbor], pos[goal])
+                frontier.put((priority, neighbor))
+                came_from[neighbor] = current
+
+    # Reconstruir caminho
+    path = []
+    current = goal
+    while current is not None:
+        path.append(current)
+        current = came_from[current]
+    path.reverse()
+
+    return path, cost_so_far[goal]
+
+
+# ----------------------------
+# 3. Agrupamento com K-Means
+# ----------------------------
+def agrupar_entregas(graph, n_clusters=2):
+    pos = nx.get_node_attributes(graph, "pos")
+    clientes = [n for n in graph.nodes if n != "Restaurante"]
+    coords = np.array([pos[n] for n in clientes])
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    labels = kmeans.fit_predict(coords)
+
+    clusters = {}
+    for i, cliente in enumerate(clientes):
+        clusters.setdefault(int(labels[i]), []).append(cliente)
+
+    return clusters, kmeans.inertia_
+
+
+# ----------------------------
+# 4. Visualização
+# ----------------------------
+def plot_grafo(graph, clusters=None, path=None, save_path="outputs/map_routes.png"):
+    pos = nx.get_node_attributes(graph, "pos")
+    plt.figure(figsize=(8, 6))
+
+    # Grafo base
+    nx.draw(
+        graph,
+        pos,
+        with_labels=True,
+        node_size=800,
+        node_color="lightblue",
+        font_size=9,
+        font_weight="bold",
+    )
+
+    # Clusters
+    if clusters:
+        colors = ["red", "green", "blue", "orange"]
+        for cid, clientes in clusters.items():
+            nx.draw_networkx_nodes(
+                graph,
+                pos,
+                nodelist=clientes,
+                node_color=colors[cid % len(colors)],
+                node_size=700,
+            )
+
+    # Caminho A*
+    if path:
+        edges_path = [(path[i], path[i + 1]) for i in range(len(path) - 1)]
+        nx.draw_networkx_edges(
+            graph,
+            pos,
+            edgelist=edges_path,
+            width=3,
+            edge_color="black",
+        )
+
+    os.makedirs("outputs", exist_ok=True)
+    plt.savefig(save_path)
+    plt.show()
+
+
+# ----------------------------
+# 5. Main
+# ----------------------------
+def main():
+    G = criar_grafo()
+
+    # Agrupar entregas em 2 zonas
+    clusters, inertia = agrupar_entregas(G, n_clusters=2)
+
+    # Exemplo: calcular rota do restaurante até ClienteD com A*
+    path, custo = a_star_search(G, "Restaurante", "ClienteD")
+
+    # Plotar
+    plot_grafo(G, clusters, path)
+
+    # Resultados
+    results = {
+        "clusters": {str(k): v for k, v in clusters.items()},  # chaves convertidas para str
+        "inercia_kmeans": float(inertia),
+        "rota_exemplo": path,
+        "custo_rota": float(custo),
+    }
+
+    os.makedirs("outputs", exist_ok=True)
+    with open("outputs/results.json", "w") as f:
+        json.dump(results, f, indent=4)
+
+    print("Resultados salvos em outputs/results.json")
+
+
+# ----------------------------
+# 6. Executar
+# ----------------------------
+if __name__ == "__main__":
+    main()
